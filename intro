@@ -1,0 +1,114 @@
+-- LocalScript (StarterPlayerScripts)
+
+-- Services
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BlackoutGui"
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 999999 -- Ensures it renders above all other UI
+screenGui.IgnoreGuiInset = true -- Ignore Topbar inset
+screenGui.Parent = playerGui
+
+-- Get screen size
+local viewportSize = workspace.CurrentCamera.ViewportSize
+local overSize = UDim2.new(0, viewportSize.X * 1.2, 0, viewportSize.Y * 1.2)
+
+-- Create Black Frame
+local blackFrame = Instance.new("Frame")
+blackFrame.Size = overSize
+blackFrame.Position = UDim2.new(0.5, -overSize.X.Offset/2, 0.5, -overSize.Y.Offset/2)
+blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+blackFrame.BackgroundTransparency = 0
+blackFrame.BorderSizePixel = 0
+blackFrame.ZIndex = 10
+blackFrame.Parent = screenGui
+
+-- Create ImageLabel (position it below the Topbar in top-left)
+local imageLabel = Instance.new("ImageLabel")
+imageLabel.Size = UDim2.new(0, 1218, 0, 96)
+imageLabel.Position = UDim2.new(0, 0, 0, 36) -- Position it just below the Topbar (36px is typical height of the Topbar)
+imageLabel.AnchorPoint = Vector2.new(0, 0)
+imageLabel.BackgroundTransparency = 1
+imageLabel.Image = "rbxassetid://98043703663044"
+imageLabel.Visible = false
+imageLabel.ZIndex = 11
+imageLabel.Parent = screenGui
+
+-- Mute all sounds function
+local function muteAllSounds()
+    local sounds = {}
+    
+    -- Collect all sounds in the game
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Sound") then
+            table.insert(sounds, obj)
+            obj.Volume = 0
+        end
+    end
+    
+    -- Also check Player's GUI for any sound objects
+    for _, obj in ipairs(playerGui:GetDescendants()) do
+        if obj:IsA("Sound") then
+            table.insert(sounds, obj)
+            obj.Volume = 0
+        end
+    end
+    
+    return sounds
+end
+
+-- Restore sound volumes
+local function restoreSoundVolumes(sounds)
+    for _, sound in ipairs(sounds) do
+        sound.Volume = sound:GetAttribute("OriginalVolume") or 1 -- Restore original volume or default to 1
+    end
+end
+
+-- Store original volumes of all sounds
+local originalSounds = {}
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Sound") then
+        table.insert(originalSounds, obj)
+        obj:SetAttribute("OriginalVolume", obj.Volume)
+    end
+end
+for _, obj in ipairs(playerGui:GetDescendants()) do
+    if obj:IsA("Sound") then
+        table.insert(originalSounds, obj)
+        obj:SetAttribute("OriginalVolume", obj.Volume)
+    end
+end
+
+-- Sound replacement
+local sound2 = replicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):FindFirstChild("rbxassetid://85477377169399")
+if sound2 then
+    sound2.SoundId = getcustomasset('whistle/layer2.wav')
+end
+
+-- Start Sequence
+task.delay(0, function()
+    local soundsToMute = muteAllSounds() -- Mute all sounds immediately
+
+    -- Show the image and play the sound
+    task.delay(3, function()
+        imageLabel.Visible = true
+        
+        -- Play the whistle sound (whistle/intro.wav) on decal appearance
+        local whistleSound = Instance.new("Sound")
+        whistleSound.SoundId = getcustomasset('whistle/intro.wav')
+        whistleSound.Parent = playerGui
+        whistleSound:Play()
+
+        -- Wait for the sound to finish playing (3 seconds)
+        task.wait(3)
+        
+        -- Clean up
+        restoreSoundVolumes(soundsToMute) -- Restore sound volumes after blackout
+        screenGui:Destroy()
+    end)
+end)
